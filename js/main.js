@@ -83,10 +83,7 @@ function setupSearchListener() {
         return;
     }
     
-    // Add click event to search button
     searchBtn.addEventListener('click', handleSearch);
-    
-    // Add enter key support
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             handleSearch();
@@ -129,41 +126,95 @@ async function handleSearch(){
     gridContainer.innerHTML = '<p style="text-align: center; font-size: 18px; color: #666; padding: 40px;">Searching…</p>';
     
     try{
+        const mockResponse = await fetch('data/mock.json');
+        const mockData = mockResponse.ok ? await mockResponse.json() : [];
+        
+        const matchingMockData = mockData.filter(dest => 
+            dest.name.toLowerCase() === normalizedKeyword || 
+            dest.country.toLowerCase() === normalizedKeyword
+        );
+        
         const response = await fetch(
             `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword)}&client_id=${UNSPLASH_KEY}&per_page=6`
         );
         
-        if (!response.ok) {
+        if (response.status === 429){
+            console.warn('Unsplash API rate limit reached');
+            gridContainer.innerHTML = '<p style="color: #ff9800; text-align: center; padding: 40px;">API limit reached. Showing related destinations...</p>';
+            displayCombinedResults(matchingMockData, [], keyword);
+            return;
+        }
+        
+        if (response.status >= 500){
+            console.warn('Unsplash API server error:', response.status);
+            gridContainer.innerHTML = '<p style="color: #ff9800; text-align: center; padding: 40px;">Service temporarily unavailable. Showing related destinations...</p>';
+            displayCombinedResults(matchingMockData, [], keyword);
+            return;
+        }
+        
+        if (!response.ok){
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
         
         const data = await response.json();
-        const photos = data.results;
+        const photos = data.results || [];
         
-        gridContainer.innerHTML = '';
-        
-        if (photos.length === 0){
-            gridContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No images found. Try another search!</p>';
-            return;
-        }
-        
-        photos.slice(0, 6).forEach(photo =>{
-            const card = document.createElement('div');
-            card.className = 'card';
-            
-            const cardContent = `
-                <img src="${photo.urls.small}" alt="${keyword}">
-                <div class="body">
-                    <h3>${keyword}</h3>
-                    <p>Placeholder text to be replaced by Wiki</p>
-                </div>
-            `;
-            card.innerHTML = cardContent;
-            gridContainer.appendChild(card);
-        });
+        displayCombinedResults(matchingMockData, photos, keyword);
     } 
     catch (error){
-        console.error('Failed to fetch Unsplash data:', error);
-        gridContainer.innerHTML = '<p style="color: red; text-align: center; padding: 40px;">Error searching images. Please try again later.</p>';
+        console.error('Failed to fetch data:', error);
+        
+        if (error.message.includes('Failed to fetch')){
+            gridContainer.innerHTML = '<p style="color: #ff9800; text-align: center; padding: 40px;">Network error. Showing related destinations...</p>';
+        } 
+        else{
+            gridContainer.innerHTML = '<p style="color: red; text-align: center; padding: 40px;">Error searching images. Please try again later.</p>';
+        }
     }
+}
+
+/**
+ * @function displayCombinedResults
+ * 
+ */
+function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
+    const gridContainer = document.getElementById('destination-grid');
+    gridContainer.innerHTML = '';
+    
+    const combinedResults = [];
+    mockResults.forEach(dest => {
+        combinedResults.push({
+            url: dest.img,
+            title: dest.name,
+            description: dest.desc
+        });
+    });
+    
+    unsplashPhotos.slice(0, 6 - combinedResults.length).forEach(photo => {
+        combinedResults.push({
+            url: photo.urls.small,
+            title: keyword,
+            description: 'Photo from Unsplash'
+        });
+    });
+    
+    if (combinedResults.length === 0) {
+        gridContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No results found for your search.</p>';
+        return;
+    }
+    
+    combinedResults.forEach(result => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        
+        const cardContent = `
+            <img src="${result.url}" alt="${result.title}" style="object-fit: cover; height: 200px; width: 100%;">
+            <div class="body">
+                <h3>${result.title}</h3>
+                <p>${result.description}</p>
+            </div>
+        `;
+        card.innerHTML = cardContent;
+        gridContainer.appendChild(card);
+    });
 }

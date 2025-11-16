@@ -332,7 +332,9 @@ DETAILS PAGE
     }
 }
 
-/* 9. CONTACT PAGE  */
+/* 
+CONTACT PAGE
+*/
 
 /* Styles for the active link in the nav */
 nav .links a.active {
@@ -340,8 +342,7 @@ nav .links a.active {
     font-weight: 800;
 }
 
-/* Mobile Menu Button */
-.menu-toggle {
+.menu-toggle{
     display: none;
     /* Hidden on desktop */
     background: var(--main-color);
