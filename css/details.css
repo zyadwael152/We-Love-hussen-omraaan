@@ -53,7 +53,6 @@
 
 .gallery-grid img:hover {
     transform: scale(1.03);
-    /* Animation for gallery images */
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
@@ -109,7 +108,30 @@
     font-weight: 600;
 }
 
-/* 8. DETAILS PAGE RESPONSIVE */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 @media(max-width: 768px) {
     .details-container {
         margin: 15px;
