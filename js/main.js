@@ -175,9 +175,8 @@ async function handleSearch(){
 
 /**
  * @function displayCombinedResults
- * 
  */
-function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
+async function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
     const gridContainer = document.getElementById('destination-grid');
     gridContainer.innerHTML = '';
     
@@ -186,7 +185,8 @@ function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
         combinedResults.push({
             url: dest.img,
             title: dest.name,
-            description: dest.desc
+            description: dest.desc,
+            wikiName: dest.name
         });
     });
     
@@ -194,7 +194,8 @@ function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
         combinedResults.push({
             url: photo.urls.small,
             title: keyword,
-            description: 'Photo from Unsplash'
+            description: 'Photo from Unsplash',
+            wikiName: keyword
         });
     });
     
@@ -203,7 +204,17 @@ function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
         return;
     }
     
-    combinedResults.forEach(result => {
+    const resultsWithDescriptions = await Promise.all(
+        combinedResults.map(async (result) => {
+            const wikiDesc = await fetchWikipediaDescription(result.wikiName);
+            return{
+                ...result,
+                description: wikiDesc || result.description
+            };
+        })
+    );
+    
+    resultsWithDescriptions.forEach(result => {
         const card = document.createElement('div');
         card.className = 'card';
         
@@ -217,4 +228,32 @@ function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
         card.innerHTML = cardContent;
         gridContainer.appendChild(card);
     });
+}
+
+/**
+ * @function fetchWikipediaDescription
+ */
+async function fetchWikipediaDescription(destinationName) {
+    try{
+        const response = await fetch(
+            `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(destinationName)}`
+        );
+        
+        if (!response.ok){
+            console.warn(`Data fetch failed for "${destinationName}": ${response.status}`);
+            return null;
+        }
+        
+        const data = await response.json();
+        if (data.extract){
+            const truncatedDesc = data.extract.length > 150 ? data.extract.substring(0, 150) + '...' : data.extract;
+            return truncatedDesc;
+        }
+        
+        return null;
+    } 
+    catch (error){
+        console.error(`Error fetching data for "${destinationName}":`, error);
+        return null;
+    }
 }
