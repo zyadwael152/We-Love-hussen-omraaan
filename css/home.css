@@ -125,7 +125,7 @@
     font-size: 0.9rem;
     text-align: center;
     transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
-    margin-top: auto;
+    margin-top: 12px;
     align-self: flex-start;
 }
 
