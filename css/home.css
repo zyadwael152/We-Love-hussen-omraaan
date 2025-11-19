@@ -113,6 +113,32 @@
     color: #555;
     line-height: 1.5;
 }
+/* View More Button */
+.view-more-btn {
+    display: inline-block;
+    background: var(--main-color);
+    color: white;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    margin-top: auto;
+    align-self: flex-start;
+}
+
+.view-more-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(232, 172, 32, 0.4);
+    background: #d69c1a;
+}
+
+.view-more-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(232, 172, 32, 0.3);
+}
 
 /* 5. MODAL (Homepage) */
 #detailModal {

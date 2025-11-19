@@ -112,6 +112,7 @@ async function renderMockData(){
                 <div class="body">
                     <h3>${dest.name}</h3>
                     <p>${dest.desc}</p>
+                    <a href="details.html?destination=${encodeURIComponent(dest.name)}" class="view-more-btn">View More</a>
                 </div>
             `;
             card.innerHTML = cardContent;
@@ -288,6 +289,7 @@ async function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
             <div class="body">
                 <h3>${result.title}</h3>
                 <p>${result.description}</p>
+                <a href="details.html?destination=${encodeURIComponent(result.title)}" class="view-more-btn">View More</a>
             </div>
         `;
         card.innerHTML = cardContent;
