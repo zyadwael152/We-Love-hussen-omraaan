@@ -20,16 +20,33 @@
         </div>
         <div class="links">
             <a href="index.html">Home</a>
-            <a href="explore.html">Explore</a>
-            <a href="contact.html">Contact</a>
+            <a href="#">Explore</a>
+            <a href="#">Contact</a>
         </div>
     </nav>
+    <main class="details-container">
+        <h1 class="details-title">Loading...</h1>
+        <section class="gallery-grid">
+            <img src="" alt="Main view" class="gallery-img-main">
+            <img src="" alt="Detail view" class="gallery-img-side">
+            <img src="" alt="Landmark view" class="gallery-img-side">
+        </section>
 
-    <section class="details-section">
-        <div id="destination-details">
+        <div class="details-layout">
+
+            <article class="details-content">
+                <h2>About</h2>
+                <p>Loading destination information...</p>
+            </article>
+
+            <aside class="details-sidebar">
+                <h3>Location on Map</h3>
+                <div class="map-placeholder">
+                    <p>Google Map will be here</p>
+                </div>
+            </aside>
         </div>
-    </section>
-
+    </main>
     <footer class="site-footer">
         <div class="container">
             <p>&copy; <span id="year"></span> WeGo. All rights reserved.</p>
@@ -38,6 +55,7 @@
     <script>
         document.getElementById('year').textContent = new Date().getFullYear();
     </script>
+    <script src="js/api.js"></script>
     <script src="js/details.js"></script>
 </body>
 
