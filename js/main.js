@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    renderMockData();
+    renderDefaultDestinations();
     setupSearchListener();
     locationsLoadedPromise = loadValidLocations();
 });
@@ -9,7 +9,6 @@ let validLocations = {
     countries: []
 };
 
-let mockDataCache = null;
 const wikiCache = new Map();
 let currentUnsplashController = null;
 let locationsLoadedPromise = null;
@@ -47,26 +46,6 @@ function showGridStatus(message, type = 'info') {
 }
 
 /**
- * @function loadMockDataCache
- * Caches mock.json data to avoid repeated network fetches
- * Returns cached data on subsequent calls
- */
-async function loadMockDataCache(){
-    if (mockDataCache) return mockDataCache;
-    try{
-        const response = await fetch('data/mock.json');
-        if (!response.ok) throw new Error('Failed to load mock data');
-        mockDataCache = await response.json();
-        return mockDataCache;
-    } 
-    catch (error){
-        console.error('Failed to cache mock data:', error);
-        mockDataCache = [];
-        return mockDataCache;
-    }
-}
-
-/**
  * @function loadValidLocations
  * Loads cities and countries from JSON file to validate user search input
  */
@@ -85,11 +64,11 @@ async function loadValidLocations(){
 }
 
 /**
- * @function renderMockData 
- * Loads and displays initial mock destination data on page load
+ * @function renderDefaultDestinations 
+ * Loads and displays 6 popular destinations from Unsplash on page load
  */
 
-async function renderMockData(){
+async function renderDefaultDestinations(){
 
     const gridContainer = document.getElementById('destination-grid');
 
@@ -99,20 +78,29 @@ async function renderMockData(){
     }
 
     try{
-        const destinations = await loadMockDataCache();
-
-        gridContainer.innerHTML = ''; 
-
-        destinations.forEach(dest => {
+        const defaultCities = ['Paris', 'Tokyo', 'New York', 'Rio de Janeiro', 'Barcelona', 'Cairo'];
+        
+        gridContainer.innerHTML = '';
+        
+        // Fetch images for each default city
+        const allCards = await Promise.all(
+            defaultCities.map(async (city) =>{
+                const imageUrl = await fetchUnsplashImage(city);
+                const description = await fetchWikipediaDescription(city);
+                return { city, imageUrl, description };
+            })
+        );
+        
+        allCards.forEach(({ city, imageUrl, description }) => {
             const card = document.createElement('div');
             card.className = 'card';
 
             const cardContent = `
-                <img src="${dest.img}" alt="${dest.name}" loading="lazy">
+                <img src="${imageUrl}" alt="${city}" loading="lazy" style="object-fit: cover; height: 200px; width: 100%;">
                 <div class="body">
-                    <h3>${dest.name}</h3>
-                    <p>${dest.desc}</p>
-                    <a href="details.html?destination=${encodeURIComponent(dest.name)}" class="view-more-btn">View More</a>
+                    <h3>${city}</h3>
+                    <p>${description || 'Discover this amazing destination.'}</p>
+                    <a href="details.html?destination=${encodeURIComponent(city)}" class="view-more-btn">View More</a>
                 </div>
             `;
             card.innerHTML = cardContent;
@@ -121,7 +109,7 @@ async function renderMockData(){
 
     } 
     catch (error){
-        console.error('Failed to fetch mock data:', error);
+        console.error('Failed to load default destinations:', error);
         showGridStatus('Error loading destinations. Please try again later.', 'error');
     }
 }
@@ -150,7 +138,7 @@ function setupSearchListener() {
 
 /**
  * @function handleSearch
- * Main search handler: validates input, fetches mock + Unsplash data, handles errors
+ * Main search handler: validates input, fetches Unsplash data with descriptions
  */
 async function handleSearch(){
     const searchInput = document.getElementById('search-input');
@@ -190,13 +178,6 @@ async function handleSearch(){
         }
         currentUnsplashController = new AbortController();
         const signal = currentUnsplashController.signal;
-        const mockData = await loadMockDataCache();
-        
-        // Filter mock data by matching city/country name
-        const matchingMockData = mockData.filter(dest => 
-            dest.name.toLowerCase() === normalizedKeyword || 
-            dest.country.toLowerCase() === normalizedKeyword
-        );
         
         const response = await fetch(
             `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword)}&client_id=${UNSPLASH_KEY}&per_page=6`,{ signal }
@@ -205,15 +186,13 @@ async function handleSearch(){
         if (response.status === 429){
             const retryAfter = response.headers.get('Retry-After') || 'a few moments';
             console.warn('Unsplash API rate limit reached');
-            showGridStatus(`API limit reached. Try again after ${retryAfter}. Showing related destinations...`, 'warning');
-            displayCombinedResults(matchingMockData, [], keyword);
+            showGridStatus(`API limit reached. Try again after ${retryAfter}. Please try again later.`, 'warning');
             return;
         }
         
         if (response.status >= 500){
             console.warn('Unsplash API server error:', response.status);
-            showGridStatus('Service temporarily unavailable. Showing related destinations...', 'warning');
-            displayCombinedResults(matchingMockData, [], keyword);
+            showGridStatus('Service temporarily unavailable. Please try again later.', 'warning');
             return;
         }
         
@@ -221,7 +200,13 @@ async function handleSearch(){
         
         const data = await response.json();
         const photos = data.results || [];
-        displayCombinedResults(matchingMockData, photos, keyword);
+        
+        if (photos.length === 0){
+            showGridStatus('No results found for your search.', 'info');
+            return;
+        }
+        
+        displayUnsplashResults(photos, keyword);
     } 
     catch (error){
         if (error.name === 'AbortError'){
@@ -238,36 +223,19 @@ async function handleSearch(){
 }
 
 /**
- * @function displayCombinedResults
- * Combines mock data + Unsplash results, fetches Wikipedia descriptions, and renders cards
+ * @function displayUnsplashResults
+ * Displays Unsplash results with fetched Wikipedia descriptions
  */
-async function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
+async function displayUnsplashResults(unsplashPhotos, keyword) {
     const gridContainer = document.getElementById('destination-grid');
     gridContainer.innerHTML = '';
     
-    const combinedResults = [];
-    mockResults.forEach(dest => {
-        combinedResults.push({
-            url: dest.img,
-            title: dest.name,
-            description: dest.desc,
-            wikiName: dest.name
-        });
-    });
-    
-    unsplashPhotos.slice(0, 6 - combinedResults.length).forEach(photo =>{
-        combinedResults.push({
-            url: photo.urls.small,
-            title: keyword,
-            description: 'Photo from Unsplash',
-            wikiName: keyword
-        });
-    });
-    
-    if (combinedResults.length === 0){
-        showGridStatus('No results found for your search.', 'info');
-        return;
-    }
+    const combinedResults = unsplashPhotos.map(photo => ({
+        url: photo.urls.small,
+        title: keyword,
+        description: 'Photo from Unsplash',
+        wikiName: keyword
+    }));
     
     // Fetch Wikipedia descriptions for all results in parallel (with caching)
     const resultsWithDescriptions = await Promise.all(
@@ -295,6 +263,35 @@ async function displayCombinedResults(mockResults, unsplashPhotos, keyword) {
         card.innerHTML = cardContent;
         gridContainer.appendChild(card);
     });
+}
+
+/**
+ * @function fetchUnsplashImage
+ * Fetches a single random image for a destination from Unsplash API
+ * @param {string} destination - Name of the destination
+ * @returns {string} - URL of the image or placeholder if not found
+ */
+async function fetchUnsplashImage(destination) {
+    try{
+        const response = await fetch(
+            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(destination)}&client_id=${UNSPLASH_KEY}&per_page=1`
+        );
+        
+        if (!response.ok){
+            console.warn(`Failed to fetch image for ${destination}: ${response.status}`);
+            return 'assets/0.jpg'; // Fallback to placeholder
+        }
+        
+        const data = await response.json();
+        if (data.results && data.results.length > 0)
+            return data.results[0].urls.small;
+        
+        return 'assets/0.jpg'; // Fallback if no results
+    } 
+    catch (error){
+        console.error(`Error fetching image for ${destination}:`, error);
+        return 'assets/0.jpg'; // Fallback on error
+    }
 }
 
 /**
